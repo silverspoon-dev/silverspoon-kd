@@ -1,0 +1,48 @@
+/* Autodoc: subtle left border on class/function signatures */
+dl.py.class > dt,
+dl.py.function > dt,
+dl.py.data > dt {
+    border-left: 3px solid var(--color-brand-primary);
+    padding-left: 0.75rem;
+}
+
+/* Autodoc: spacing between documented objects */
+dl.py {
+    margin-top: 1.5rem;
+}
+
+/* Admonition titles */
+.admonition-title {
+    font-weight: 600;
+}
+
+/* Code blocks: rounded corners */
+.highlight pre {
+    border-radius: 6px;
+}
+
+/* Inline code: softer */
+:not(pre) > code {
+    border-radius: 3px;
+    padding: 0.1em 0.3em;
+}
+
+/* Tables: align text top for multi-line cells */
+table td {
+    vertical-align: top;
+}
+
+/* Concept diagrams are TikZ exports with transparent backgrounds and dark
+   strokes; give them a light backing in dark mode so they stay legible. */
+body[data-theme="dark"] article img[src$=".svg"] {
+    background: #f7f7f7;
+    padding: 0.75rem;
+    border-radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+    body:not([data-theme="light"]) article img[src$=".svg"] {
+        background: #f7f7f7;
+        padding: 0.75rem;
+        border-radius: 6px;
+    }
+}

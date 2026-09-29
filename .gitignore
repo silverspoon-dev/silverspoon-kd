@@ -1,0 +1,14 @@
+__pycache__/
+.benchmarks/
+.coverage
+.DS_Store
+.env
+.pytest_cache
+*.egg-info/
+benchmark-output.json
+build/
+coverage.json
+dist/
+htmlcov/
+docs/_build/
+wandb

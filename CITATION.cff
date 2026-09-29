@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use SilverSpoon-KD in your research, please cite it as below."
+type: software
+title: "SilverSpoon-KD: A General-Purpose Toolkit for Knowledge Distillation"
+authors:
+  - family-names: Davey
+    given-names: Xaver R.
+    affiliation: KTH Royal Institute of Technology
+version: 0.1.0
+date-released: 2026-09-29
+license: Apache-2.0
+repository-code: "https://github.com/silverspoon-dev/silverspoon-kd"
+url: "https://kd.silverspoon.dev"
+keywords:
+  - knowledge distillation
+  - model compression
+  - transformers
+  - large language models
+  - pytorch

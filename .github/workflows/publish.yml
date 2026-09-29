@@ -1,0 +1,68 @@
+name: Publish to PyPI
+
+# Triggered by pushing a ``vX.Y.Z`` tag.  Uses PyPI Trusted Publishing
+# (OIDC), so no API token is stored in the repository.  One-time setup on
+# pypi.org:
+#   Publishing -> Add a new pending publisher
+#     PyPI project name: silverspoon-kd
+#     Owner:             silverspoon-dev
+#     Repository:        silverspoon-kd
+#     Workflow name:     publish.yml
+#     Environment name:  pypi
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Only the canonical repository publishes; forks skip this workflow.
+    if: github.repository == 'silverspoon-dev/silverspoon-kd'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check that the tag matches the package version
+        run: |
+          version=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match pyproject.toml version v${version}" >&2
+            exit 1
+          fi
+          grep -qF "__version__ = \"${version}\"" silverspoon_kd/__init__.py \
+            || { echo "silverspoon_kd/__init__.py __version__ does not match v${version}" >&2; exit 1; }
+      - name: Install build tooling
+        run: pip install build twine
+      - name: Build sdist and wheel
+        run: python -m build
+      - name: Check distributions
+        run: twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The ``pypi`` environment is what PyPI's trusted publisher is bound to.
+    # Add required reviewers to it in Settings -> Environments for a manual
+    # approval gate before each upload.
+    environment:
+      name: pypi
+      url: https://pypi.org/project/silverspoon-kd/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

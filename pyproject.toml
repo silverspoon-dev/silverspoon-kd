@@ -1,0 +1,220 @@
+[build-system]
+# setuptools>=77 is needed for the SPDX ``license`` string + ``license-files``.
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "silverspoon-kd"
+version = "0.1.0"
+description = "A general-purpose toolkit for knowledge distillation of transformer models"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Xaver R. Davey" }]
+requires-python = ">=3.10"
+keywords = [
+    "knowledge-distillation",
+    "model-compression",
+    "transformers",
+    "llm",
+    "pytorch",
+    "deep-learning",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+dependencies = [
+    "torch>=2.0.0",
+    # The distillers subclass HF Trainer and override internal methods
+    # (``_signature_columns``, ``training_step``, ``compute_loss``) that are
+    # not part of its public API and have changed between major versions.
+    # Only the 5.x series is tested (CI installs the latest 5.x); bumping the
+    # upper bound to 6.x needs explicit validation.
+    "transformers>=5.0.0,<6.0.0",
+    "accelerate>=1.0.0",
+    "peft",
+    "datasets",
+    "tqdm",
+]
+
+[project.urls]
+Homepage = "https://kd.silverspoon.dev"
+Documentation = "https://kd.silverspoon.dev"
+Repository = "https://github.com/silverspoon-dev/silverspoon-kd"
+Issues = "https://github.com/silverspoon-dev/silverspoon-kd/issues"
+Changelog = "https://github.com/silverspoon-dev/silverspoon-kd/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov",
+    "pytest-xdist>=3.0.0",
+    "pyright",
+    "ruff==0.16.6",  # exact pin: keep in sync with .pre-commit-config.yaml
+    "pre-commit",
+]
+release = [
+    "build",
+    "twine",
+]
+benchmark = [
+    "pytest>=7.0.0",
+    "pytest-benchmark>=4.0.0",
+]
+docs = [
+    "sphinx>=7.0",
+    "furo>=2024.1",
+    "myst-parser>=3.0",
+    "sphinx-design>=0.6",
+    "sphinx-copybutton>=0.5",
+    "sphinx-autobuild>=2024.0",
+]
+pruning = [
+    "torch-pruning>=1.5.0",
+]
+liger = [
+    "liger-kernel>=0.4.0",
+]
+weightwatcher = [
+    "weightwatcher",
+]
+bnb = [
+    "bitsandbytes",
+]
+all = [
+    "silverspoon-kd[dev,release,benchmark,docs,pruning,liger,weightwatcher,bnb]",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["silverspoon_kd*"]
+
+[tool.setuptools.package-data]
+silverspoon_kd = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v"
+filterwarnings = [
+    # --- Torch internals (already on latest torch, no upstream fix available) ---
+    # DataParallel GPU memory imbalance (hardware-dependent, informational)
+    "ignore:(?s).*imbalance between your GPUs:UserWarning",
+    # torch.jit.script_method deprecation
+    "ignore:`torch.jit.script_method` is deprecated:DeprecationWarning",
+    # pin_memory / is_pinned device argument deprecation
+    "ignore:The argument 'device' of Tensor\\.pin_memory:DeprecationWarning",
+    "ignore:The argument 'device' of Tensor\\.is_pinned:DeprecationWarning",
+    # torch.compile dynamo tracing limitation
+    "ignore:Dynamo does not know how to trace the builtin:UserWarning",
+    # torchao 0.16 internal deprecation warnings (transformers hasn't updated their imports yet)
+    "ignore:Importing from torchao\\.dtypes:DeprecationWarning",
+    "ignore:Importing BlockSparseLayout from torchao\\.dtypes:DeprecationWarning",
+    # sentencepiece SWIG bindings (needs SWIG 4.4+ upstream, no fix available)
+    "ignore:builtin type Swig.*has no __module__ attribute:DeprecationWarning",
+]
+
+[tool.pyright]
+include = ["silverspoon_kd"]
+exclude = [
+    "**/__pycache__",
+    "**/node_modules",
+    "build",
+    "dist",
+]
+# "standard" enables a materially larger set of inference-based checks
+# than "basic" (argument types, optional-member access, overload match,
+# etc.) while still being lenient about missing torch C-extension stubs.
+typeCheckingMode = "standard"
+# Optional/environment-specific imports (liger-kernel, weightwatcher,
+# peft extras) aren't always installed — treat a missing import as a
+# warning rather than an error so CI passes on minimal-dependency
+# environments while still surfacing typos in reviews.
+reportMissingImports = "warning"
+# torch's ``__init__.py`` does not list every public symbol in ``__all__``
+# (many are bound dynamically or come from C extensions), so pyright's
+# ``reportPrivateImportUsage`` flags routine ``torch.cat`` / ``torch.zeros``
+# / ``torch.dtype`` / ``torch.device`` usage as "private import."  These
+# are the canonical PyTorch public API — downgrade to a warning rather
+# than chase torch's ``__all__`` hygiene at every call site.
+reportPrivateImportUsage = "warning"
+reportMissingTypeStubs = false
+pythonVersion = "3.10"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# Cherry-picked rule set modelled on HuggingFace Transformers', with a
+# handful of targeted additions for bug classes this codebase has
+# actually hit (mutable class defaults, zip-without-strict, bare
+# ``Exception`` in pytest.raises).  Deliberately narrower than the
+# family-based ``select = ["B", "RUF", ...]`` pattern so a ruff
+# upgrade cannot silently add rules to CI.
+select = [
+    "E", "F", "I", "W",     # pycodestyle + pyflakes + isort
+    "UP",                    # pyupgrade
+    "SIM",                   # flake8-simplify
+    "C4",                    # flake8-comprehensions
+    "FURB",                  # refurb (modernisation)
+    "PIE794",                # duplicate class field
+    "PLC1802",               # len() in bool context
+    "PLC0208",               # iteration over set literal
+    "S110",                  # bandit: try-except-pass
+    "RUF013",                # implicit Optional
+    "RUF022",                # unsorted __all__
+    "RUF100",                # unused noqa — defence against bit rot
+    "RUF012",                # mutable class default — classic Python bug
+    "B006",                  # mutable argument default
+    "B008",                  # function call in default argument
+    "B017",                  # pytest.raises(Exception) too broad
+    "B905",                  # zip without strict=
+]
+ignore = [
+    "E501",     # handled by formatter
+    "E741",     # ``l`` / ``I`` / ``O`` — standard ML single-letter names
+    "E731",     # lambda assignment — used in loss / projector registries
+    "SIM117",   # nested ``with``: combining is pure style churn
+]
+
+[tool.ruff.lint.per-file-ignores]
+# ``__init__.py`` re-exports are unused from pyflakes' perspective.
+"**/__init__.py" = ["F401"]
+# Test and benchmark trees use ``pytestmark`` and
+# HF-style ``_no_split_modules`` class attributes that are intentional
+# class-level constants, not mutable-default bugs.  Keep RUF012 enabled
+# in the source tree (where it would catch real bugs).
+"tests/**/*.py" = ["RUF012"]
+"benchmarks/**/*.py" = ["RUF012"]
+
+[tool.ruff.format]
+# Ruff's default is Black-compatible — no overrides.
+
+[tool.coverage.run]
+source = ["silverspoon_kd"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+]
+show_missing = true
+# Current CPU-only coverage sits at ~88%; the uncovered ~12% is
+# predominantly CUDA/distributed code paths that ``make coverage``
+# cannot exercise without a GPU.  85% leaves a small buffer for minor
+# churn while still catching meaningful regressions.  Bump this if
+# coverage climbs substantially; lowering it should require review.
+fail_under = 85
